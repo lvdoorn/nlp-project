@@ -1,52 +1,57 @@
-from keras.layers import Input, Dense, Embedding, LSTM
-from keras.models import Model 
-from keras.preprocessing.text import Tokenizer
-from keras.utils import to_categorical
-
 import json
-
 import numpy as np
 
+from pickle import dump
+from keras.layers import Input, Dense, LSTM
+from keras.models import Model
+from keras.utils import to_categorical
+
+sequence_length = 10
+lstm_size = 75
+epochs = 25
+
 lines = open('data/tweets_collected_da.jsonl', 'r').read().splitlines()
-textonly = map(lambda x: json.loads(x)["text"], lines)[:10]
+textonly = map(lambda x: json.loads(x)["text"], lines)
 print "Amount of tweets: %d" % len(textonly)
 
-# Encode text as integers
-tokenizer = Tokenizer()
-tokenizer.fit_on_texts(textonly)
-encoded = tokenizer.texts_to_sequences(textonly)
-vocab_size = len(tokenizer.word_index) + 1
-print "Vocabulary size: %d" % vocab_size
-
 sequences = []
-for i in range(0, len(encoded)):
-    for j in range(1, len(encoded[i])):
-        sequence = encoded[i][j-1:j+1]
-        sequences.append(sequence)
+for text in textonly:
+    for i in range(sequence_length, len(text)):
+        seq = text[i - sequence_length:i + 1]
+        sequences.append(seq)
+print 'Total sequences: %d' % len(sequences)
 
-sequences = np.array(sequences)
-X, y = sequences[:,0], sequences[:,1]
-X = to_categorical(X, num_classes=vocab_size)
+flattext = textonly[0]
+for item in textonly:
+    flattext += item
+
+chars = sorted(list(set(flattext)))
+mapping = dict((c, i) for i, c in enumerate(chars))
+vocab_size = len(mapping)
+
+encoded = []
+for text in sequences:
+    encoded_seq = [mapping[char] for char in text]
+    encoded.append(encoded_seq)
+print 'Vocabulary size: %d' % vocab_size
+
+sequences = np.array(encoded)
+X, y = sequences[:,:-1], sequences[:,-1]
+sequences = [to_categorical(x, num_classes=vocab_size) for x in X]
+X = np.array(sequences)
 y = to_categorical(y, num_classes=vocab_size)
-print X.shape
-print y.shape
 
-inputs = Input(shape=(vocab_size,))
-x = Embedding(vocab_size, 10, input_length=1)(inputs)
-x = LSTM(50)(x)
-predictions = Dense(vocab_size, activation='softmax')(x)
+inputs = Input(shape=(sequence_length, vocab_size))
+lstm = LSTM(lstm_size)(inputs)
+predictions = Dense(vocab_size, activation='softmax')(lstm)
 model = Model(inputs=inputs, outputs=predictions)
+
+print model.summary()
+
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit(X, y, epochs=50, verbose=2)
+model.fit(X, y, epochs=epochs, verbose=2)
 
-
-in_texts = ["jeg", "er", "har", "en"] 
-print in_texts
-for in_text in in_texts:
-    print in_text
-    encoded = np.array(tokenizer.texts_to_sequences([in_text])[0])
-    yhat = model.predict(encoded, verbose=0)
-    for word, index in tokenizer.word_index.items():
-        if index == yhat:
-            print word
+# Save model and mapping to file
+model.save('model.h5')
+dump(mapping, open('mapping.pkl', 'wb'))
 
