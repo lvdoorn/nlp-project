@@ -1,4 +1,5 @@
 import json
+from langdetect import detect
 
 def removeAutomated(filename):
     data = open(filename, 'r').read().splitlines()
@@ -18,7 +19,25 @@ def removeAutomated(filename):
     print 'New data size: %d' % len(data)
     print ''
 
-data_no = removeAutomated('data/tweets_collected_no.jsonl')
-data_da = removeAutomated('data/tweets_collected_da.jsonl')
-data_sv = removeAutomated('data/tweets_collected_sv.jsonl')
+def removeEnglish(filename):
+    data = open(filename, 'r').read().splitlines()
+    print 'Filename: %s' % filename
+    print 'Original data size: %d' % len(data)
+    to_remove = []
+    for index, item in enumerate(data):
+        tweet = json.loads(item)
+        text = tweet['text']
+        # Check if tweet is in English
+        if (detect(text) == 'en'):
+            to_remove.append(index)
+            print text
+    print 'Removing %d English tweets' % len(to_remove)
+    for index in to_remove[::-1]:
+        data.pop(index)
+    print 'New data size: %d' % len(data)
+    print ''   
+
+data_no = removeEnglish('data/tweets_collected_no.jsonl')
+data_da = removeEnglish('data/tweets_collected_da.jsonl')
+data_sv = removeEnglish('data/tweets_collected_sv.jsonl')
 
