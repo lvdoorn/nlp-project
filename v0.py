@@ -7,6 +7,8 @@ from keras.layers import Input, Dense, LSTM, concatenate
 from keras.models import Model
 from keras.utils import to_categorical, plot_model
 
+from preprocessing import removeAutomated, removeEnglish
+
 sequence_length = 10
 lstm_size = 30
 epochs = 25
@@ -22,6 +24,8 @@ da = open(file_da, 'r').read().splitlines()
 sv = open(file_sv, 'r').read().splitlines()
 no = open(file_no, 'r').read().splitlines()
 allTweets = da + sv + no
+allTweets = removeAutomated(allTweets)
+allTweets = removeEnglish(allTweets)
 print "Amount of tweets: %d" % len(allTweets)
 
 def getText(tweet):
