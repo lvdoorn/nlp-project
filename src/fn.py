@@ -13,7 +13,6 @@ from keras.layers import Input, Dense, LSTM, concatenate, Embedding, TimeDistrib
 from keras.models import Model
 from keras.utils import to_categorical, plot_model
 from util import perplexity, decode, prepareData, getText
-from split import splitData
 
 embedding_size = 64
 lstm_size_1 = 128

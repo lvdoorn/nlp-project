@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Model with full place names as location data
+# Model with coordinates as location data
 
 import json
 import numpy as np
@@ -14,8 +14,8 @@ from keras.utils import to_categorical, plot_model
 from util import perplexity, decode, prepareData
 
 embedding_size = 64
-lstm_size_1 = 128
-lstm_size_2 = 128
+lstm_size_1 = 30
+lstm_size_2 = 30
 epochs = 100
 saveModel = True
 test_set_perc = 10.0
@@ -45,23 +45,24 @@ print "Size of test     set: %d" % len(testSet)
 
 # Make model
 sequence_input = Input(shape=(sequence_length,), name='sequence_input')
-location_input = Input(shape=(1,), name='location_input')
-merge = concatenate([sequence_input, location_input])
+lat_input = Input(shape=(1,), name='lat_input')
+lon_input = Input(shape=(1,), name='lon_input')
+merge = concatenate([sequence_input, lat_input, lon_input])
 embedding = Embedding(output_dim=64, input_dim=vocab_size)(merge)
 lstm = LSTM(lstm_size_1, return_sequences=True)(embedding)
 lstm = LSTM(lstm_size_2)(lstm)
 x = Dense(32, activation='relu')(lstm)
 predictions = Dense(vocab_size, activation='softmax')(x)
-model = Model(inputs=[sequence_input, location_input], outputs=predictions)
+model = Model(inputs=[sequence_input, lat_input, lon_input], outputs=predictions)
 print model.summary()
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=[perplexity])
 
 # Train and evaluate model
 trainData = prepareData(trainSet, vocab_size)
-model.fit([trainData['X'], trainData['name']], trainData['y'], epochs=5, verbose=2)
+model.fit([trainData['X'], trainData['lat'], trainData['lon']], trainData['y'], epochs=5, verbose=2)
 
 testData = prepareData(testSet, vocab_size)
-result = model.evaluate([testData['X'], testData['name']], testData['y'])
+result = model.evaluate([testData['X'], testData['lat'], testData['lon']], testData['y'])
 print str(model.metrics_names[0]) + ": " + str(result[0])
 print str(model.metrics_names[1]) + ": " + str(result[1])
 

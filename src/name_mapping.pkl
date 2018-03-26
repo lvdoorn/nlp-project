@@ -1,0 +1,53 @@
+(dp0
+VRoskilde, Danmark
+p1
+I11
+sVFrederiksberg, Danmark
+p2
+I2
+sVMons, Norway
+p3
+I6
+sVCopenhagen, Denmark
+p4
+I1
+sVMalmo, Sweden
+p5
+I4
+sVAalborg, Danmark
+p6
+I0
+sVMariestad, Sverige
+p7
+I5
+sVVadstena, Sverige
+p8
+I15
+sVStockholm, Sweden
+p9
+I13
+sVÅlesund, Norway
+p10
+I16
+sVTrondheim, Norway
+p11
+I14
+sVSlagelse, Danmark
+p12
+I12
+sVRanders, Danmark
+p13
+I10
+sVNordfyn, Danmark
+p14
+I7
+sVNorrtälje, Sverige
+p15
+I8
+sVOslo, Norway
+p16
+I9
+sVHolbæk, Danmark
+p17
+I3
+s.

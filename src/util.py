@@ -14,6 +14,10 @@ def getCharMapping(tweets):
             allChars.append(letter)
     chars = sorted(list(set(allChars)))
     mapping = dict((c, i) for i, c in enumerate(chars))
+    # Add padding, start and end characters
+    mapping['<s>'] = len(chars)
+    mapping['</s>'] = len(chars) + 1
+    mapping['<pad>'] = len(chars) + 2
     return mapping
 
 def getNameMapping(tweets):
@@ -46,7 +50,7 @@ def perplexity(y_true, y_pred):
 
 def decode(line):
     split = line.split(' ')
-    sequence = map(int, split[0].split('-'))
+    sequence = map(int, split[0].split(','))
     name = int(split[1])
     lat = float(split[2])
     lon = float(split[3])

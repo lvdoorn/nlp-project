@@ -85,21 +85,14 @@ def perplexity(y_true, y_pred):
 
 # Make model
 sequence_input = Input(shape=(sequence_length,), name='sequence_input')
-print "sequence input shape: %s" % sequence_input.shape
-embedding = Embedding(output_dim=64, input_dim=vocab_size)(sequence_input)
-print embedding.shape
+location_input = Input(shape=(1,), name='location_input')
+merge = concatenate([sequence_input, location_input])
+embedding = Embedding(output_dim=64, input_dim=vocab_size)(merge)
 lstm = LSTM(lstm_size_1, return_sequences=True)(embedding)
 lstm = LSTM(lstm_size_2)(lstm)
-#lstm = Embedding(output_dim=30, input_dim=vocab_size)(lstm)
-loc_input = Input(shape=(nameno,), name='location_input')
-print 'location input shape: ' % loc_input.shape
-#loc_embedding = Embedding(output_dim=64, input_dim=nameno)(loc_input)
-loc_embedding = loc_input
-#loc_embedding = Dense(64, activation='relu')(loc_input)
-x = concatenate([lstm, loc_embedding])
-x = Dense(64, activation='relu')(x)
-predictions = Dense(vocab_size, activation='softmax')(x)
-model = Model(inputs=[sequence_input, loc_input], outputs=predictions)
+x = Dense(32, activation='relu')(lstm)
+predictions = Dense(32, activation='softmax')(x)
+model = Model(inputs=[sequence_input, location_input], outputs=predictions)
 print model.summary()
 plot_model(model, to_file='model.png')
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=[perplexity])
