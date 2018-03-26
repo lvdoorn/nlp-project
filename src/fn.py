@@ -48,16 +48,22 @@ print "Size of test     set: %d" % len(testSet)
 
 trainX = np.array(map(lambda x: x['sequence'], trainSet))[:,:-1]
 trainLoc = prepareData(trainSet, vocab_size)['name']
+trainLoc = np.vstack([[trainLoc] for _ in range(sequence_length)]).T #TODO: This runs, but needs to be masked
 trainY = np.roll(np.array(map(lambda x: x['sequence'], trainSet)), -1)[:,:-1].reshape(len(trainSet), sequence_length, 1)
 testX = np.array(map(lambda x: x['sequence'], testSet))[:,:-1]
 testLoc = prepareData(testSet, vocab_size)['name']
+testLoc = np.vstack([[testLoc] for _ in range(sequence_length)]).T #TODO: This runs, but needs to be masked
 testY = np.roll(np.array(map(lambda x: x['sequence'], testSet)), -1)[:,:-1].reshape(len(testSet), sequence_length, 1)
+
 
 sequence_input = Input(shape=(sequence_length,), name='sequence_input')
 mask = Masking(mask_value=char_mapping['<pad>'])(sequence_input)
-location_input = Input(shape=(1,), name='location_input')
 embedding = Embedding(output_dim=embedding_size, input_dim=vocab_size)(mask)
-merge = concatenate([embedding, location_input])
+
+location_input = Input(shape=(sequence_length,), name='location_input') #TODO: Make sure this is masked similarly to normal input (currently not fixed)
+loc_embedding = Embedding(output_dim=embedding_size, input_dim=vocab_size)(location_input)
+
+merge = concatenate([embedding, loc_embedding])
 lstm = LSTM(lstm_size_1, return_sequences=True)(merge)
 lstm = LSTM(lstm_size_2, return_sequences=True)(lstm)
 predictions = TimeDistributed(Dense(vocab_size, activation='relu'))(lstm)
@@ -74,4 +80,3 @@ print str(model.metrics_names[1]) + ": " + str(result[1])
 # Save model and mapping to file
 if (saveModel):
     model.save('model_no_location.h5')
-
