@@ -9,11 +9,10 @@ import sys
 sys.path.append("/home/xbt504/nlp-project/src")
 
 from pickle import load
-from keras.layers import Input, Dense, LSTM, concatenate, Embedding, TimeDistributed, Flatten, Reshape, Masking
+from keras.layers import Input, Dense, LSTM, concatenate, Embedding, TimeDistributed, Masking
 from keras.models import Model
 from keras.utils import to_categorical, plot_model
-from util import perplexity, decode, prepareData, getText
-from split import splitData
+from util import perplexity, decode
 from tweet import Tweet
 
 # Parameters
@@ -65,10 +64,8 @@ def generator(x, y):
     while True:
         i = i + 1 % len(x)
         yield (np.array([x[i]]), to_categorical(np.array([y[i]]), num_classes=vocab_size))
-model.fit_generator(generator(trainX, trainY), steps_per_epoch=3, nb_epoch=3, verbose=2)
-#model.fit_generator(generator(trainX, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs)
-result = model.evaluate_generator(generator(testX, testY), steps=2)
-#result = model.evaluate_generator(generator(testX, testY), steps=len(testX))
+model.fit_generator(generator(trainX, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs)
+result = model.evaluate_generator(generator(testX, testY), steps=len(testX))
 print str(model.metrics_names[0]) + ": " + str(result[0])
 print str(model.metrics_names[1]) + ": " + str(result[1])
 
