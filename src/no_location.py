@@ -14,43 +14,40 @@ from keras.models import Model
 from keras.utils import to_categorical, plot_model
 from util import perplexity, decode, prepareData, getText
 from split import splitData
+from tweet import Tweet
 
+# Parameters
 embedding_size = 64
 lstm_size_1 = 128
 lstm_size_2 = 128
-epochs = 100
+epochs = 10
 saveModel = True
 batch_size = 100
-test_set_perc = 10.0
+test_set_ratio = 0.1
 sequence_filename = 'sequences.txt'
-sequence_length = 281
+max_tweet_length = 280
+sequence_length = max_tweet_length + 1 
 
-# Load data
+# Load data and mapping
 data = map(decode, open(sequence_filename, 'r').read().splitlines())
+data = map(lambda x: Tweet(x['sequence'], x['name'], ['lat'], ['lon']), data)
 print 'Loaded %d sequences' % len(data)
-
-# Load mapping from file
 char_mapping = load(open('char_mapping.pkl', 'rb'))
 vocab_size = len(char_mapping)
 print 'Vocabulary size: %d characters' % vocab_size
 
 # Split into test and training data
-testIndex = int(round(len(data) * ((100 - test_set_perc) / 100)))
+testIndex = int(round(len(data) * (1 - test_set_ratio)))
 random.shuffle(data)
 testSet = data[testIndex:] # Test data
 trainSet = data[:testIndex] # Training data
 print "Size of training set: %d" % len(trainSet)
 print "Size of test     set: %d" % len(testSet)
 
-#ts = splitData(data, True, 0.1)
-
-#print 'test set length: %d' % len(ts)
-#print 'ratio: %f' % (len(ts) / len(data))
-
-trainX = np.array(map(lambda x: x['sequence'], trainSet))[:,:-1]
-trainY = np.roll(np.array(map(lambda x: x['sequence'], trainSet)), -1)[:,:-1].reshape(len(trainSet), sequence_length, 1)
-testX = np.array(map(lambda x: x['sequence'], testSet))[:,:-1]
-testY = np.roll(np.array(map(lambda x: x['sequence'], testSet)), -1)[:,:-1].reshape(len(testSet), sequence_length, 1)
+trainX = np.array(map(lambda x: x.getText(), trainSet))[:,:-1]
+trainY = np.roll(np.array(map(lambda x: x.getText(), trainSet)), -1)[:,:-1].reshape(len(trainSet), sequence_length, 1)
+testX = np.array(map(lambda x: x.getText(), testSet))[:,:-1]
+testY = np.roll(np.array(map(lambda x: x.getText(), testSet)), -1)[:,:-1].reshape(len(testSet), sequence_length, 1)
 
 in_layer = Input(shape=(sequence_length,))
 mask = Masking(mask_value=char_mapping['<pad>'])(in_layer)
@@ -63,8 +60,15 @@ print model.summary()
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=[perplexity])
 
 # Train and evaluate performance
-model.fit(trainX, to_categorical(trainY), epochs=10, verbose=2)
-result = model.evaluate(testX, to_categorical(testY))
+def generator(x, y):
+    i = 0
+    while True:
+        i = i + 1 % len(x)
+        yield (np.array([x[i]]), to_categorical(np.array([y[i]]), num_classes=vocab_size))
+model.fit_generator(generator(trainX, trainY), steps_per_epoch=3, nb_epoch=3, verbose=2)
+#model.fit_generator(generator(trainX, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs)
+result = model.evaluate_generator(generator(testX, testY), steps=2)
+#result = model.evaluate_generator(generator(testX, testY), steps=len(testX))
 print str(model.metrics_names[0]) + ": " + str(result[0])
 print str(model.metrics_names[1]) + ": " + str(result[1])
 
