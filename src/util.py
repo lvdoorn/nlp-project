@@ -4,14 +4,16 @@ import numpy as np
 from keras.utils import to_categorical
 
 def getText(tweet):
-    return json.loads(tweet)['text']
+    tweet['text']
 
 def getCharMapping(tweets):
     allChars = []
     textonly = map(getText, tweets)
+    print textonly
     for tweet in textonly:
-        for letter in tweet:
-            allChars.append(letter)
+        if tweet != None:
+            for letter in tweet:
+                allChars.append(letter)
     chars = sorted(list(set(allChars)))
     mapping = dict((c, i) for i, c in enumerate(chars))
     # Add padding, start and end characters
@@ -30,14 +32,14 @@ def getNameMapping(tweets):
     return mapping
 
 def getFullName(tweet):
-    js = json.loads(tweet)
+    js = tweet
     if 'place' in js and js['place'] != None:
         if 'full_name' in js['place']:
             return js['place']['full_name']
     return ''
 
 def getCoords(tweet):
-    js = json.loads(tweet)
+    js = tweet
     if 'geo' in js and js['geo'] != None:
         if 'coordinates' in js['geo']:
             return js['geo']['coordinates']

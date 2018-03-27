@@ -8,12 +8,13 @@ sys.path.append("/home/xbt504/nlp-project/src/")
 from langdetect import detect
 from pickle import dump
 from keras.preprocessing.sequence import pad_sequences 
+from tweet import Tweet
 
 # Preprocessing parameters
-tweet_length = 280 # Maximum tweet length
-sequence_length = 282 # Including start and end tokens
-test_set_perc = 10.0
+max_tweet_len = 280
 output_filename = "sequences.txt"
+char_mapping_filename = "char_mapping.pkl"
+name_mapping_filename = "name_mapping.pkl"
 file_da = '../collected_data/tweets_collected_da.jsonl'
 file_sv = '../collected_data/tweets_collected_sv.jsonl'
 file_no = '../collected_data/tweets_collected_no.jsonl'
@@ -22,40 +23,12 @@ sv = open(file_sv, 'r').read().splitlines()
 no = open(file_no, 'r').read().splitlines()
 tweets = (da + sv + no)
 
-class Tweet:
-    """A class to hold tweet data"""
-    def __init__(self, text, full_name, lat, lon, country, created_at):
-        self.textAttr = text
-        self.full_nameAttr = full_name
-        self.latAttr = lat
-        self.lonAttr = lon
-        self.countryAttr = country
-        self.created_atAttr = created_at
-
-    def getText(self):
-        return self.textAttr
-
-    def getFullName(self):
-        return self.full_nameAttr
-
-    def getLat(self):
-        return self.latAttr
-
-    def getLon(self):
-        return self.lonAttr
-    
-    def getCountry(self):
-        return self.countryAttr
-
-    def getCreatedAt(self):
-        return self.created_atAttr
-        
 original_length = len(tweets)
 print "Loaded %d tweets from file" % original_length
-print "Removing duplicates..."
+print "Removing duplicates ..."
 tweets = list(set(tweets))
 print "%d duplicates removed" % (original_length - len(tweets))
-print "Converting %d tweets to json format..." % len(tweets)
+print "Converting %d tweets to json format ..." % len(tweets)
 tweetObjects = []
 for tweet in tweets:
     try:
@@ -75,7 +48,7 @@ for tweet in tweets:
     except ValueError:
         print 'Got a value error'
 
-print "Filtering %d tweets based on language and automation..." % len(tweetObjects)
+print "Filtering %d tweets based on language and automation ..." % len(tweetObjects)
 def filterTweets(data):
     to_remove = []
     for index, tweet in enumerate(data):
@@ -123,16 +96,16 @@ def getNameMapping(tweets):
 char_mapping = getCharMapping(tweets)
 name_mapping = getNameMapping(tweets)
 print "vocab size: %d" % len(char_mapping)
-dump(char_mapping, open('char_mapping.pkl', 'wb'))
-dump(name_mapping, open('name_mapping.pkl', 'wb'))
+dump(char_mapping, open(char_mapping_filename, 'wb'))
+dump(name_mapping, open(name_mapping_filename, 'wb'))
 
-# Pad sequences up to maximum length, add start and end marks and write to file (as json)
-print 'Writing sequences to file...'
+# Pad sequences up to maximum length, add start and end marks and write to file
+print 'Writing sequences to file ...'
 seqList = []
 for tweet in tweets:
     sequence = [char_mapping[char] for char in tweet.getText()]
     sequence = [char_mapping['<s>']] + sequence + [char_mapping['</s>']]
-    sequence = pad_sequences([sequence], maxlen=sequence_length+2, value=char_mapping['<pad>'], padding='post')[0]
+    sequence = pad_sequences([sequence], maxlen=max_tweet_len+2, value=char_mapping['<pad>'], padding='post')[0]
     encoded_name = name_mapping[tweet.getFullName()]
     seqList.append('%s %d %f %f' % (','.join(str(n) for n in sequence), encoded_name, tweet.getLat(), tweet.getLon()))
 outstring = '\n'.join(seqList)
@@ -142,8 +115,13 @@ print '%d sequences written to file %s' % (len(tweets), output_filename)
 
 # Compute country counts
 countries = map(lambda x: x.getCountry(), tweets)
-print 'Country counts:'
-print 'Denmark: %d' % countries.count('Denmark')
-print 'Sweden: %d' % countries.count('Sweden')
-print 'Norway: %d' % countries.count('Norway')
+countryString = '\n'.join([
+        'Country counts:',
+        'Denmark: %d' % countries.count('Denmark'),
+        'Sweden: %d' % countries.count('Sweden'),
+        'Norway: %d' % countries.count('Norway')
+    ])
+print countryString
+countryFile = open("countries.txt", "w")
+countryFile.write(countryString)
 
