@@ -28,45 +28,32 @@ data = loadData()
 char_mapping = getCharMapping()
 vocab_size = len(char_mapping)
 print 'Vocabulary size: %d characters' % vocab_size
-name_mapping = getNameMapping()
-name_mapping['<pad>'] = len(name_mapping)
-loc_size = len(name_mapping)
-print 'Amount of locations: %d' % loc_size
 trainSet = data['trainSet']
 testSet = data['testSet']
 print "Size of training set: %d" % len(trainSet)
 print "Size of test     set: %d" % len(testSet)
 
-def padLocations(locations, sequences):
-    trainLoc = np.zeros(sequences.shape)
-    for i, sequence in enumerate(sequences):
-        for j in range(len(sequence)):
-            if sequences[i, j] == char_mapping['<pad>']:
-                trainLoc[i, j] = name_mapping['<pad>']
-            else:
-                trainLoc[i, j] = locations[i]
-    return trainLoc
-
-locations = map(lambda x: x.getFullName(), trainSet)
+trainLat = map(lambda x: x.getLat(), trainSet)
+trainLon = map(lambda x: x.getLon(), trainSet)
 trainSequences = np.array(map(lambda x: x.getText(), trainSet))
 trainX = trainSequences[:,:-1]
-trainLoc = padLocations(locations, trainX)
 trainY = np.roll(trainSequences, -1)[:,:-1].reshape(len(trainSet), sequence_length, 1)
-
+a = np.array([1, 2])
+a = np.stack([a for _ in range(sequence_length)])
+print a.shape
+testLat = map(lambda x: x.getLat(), testSet)
+testLon = map(lambda x: x.getLon(), testSet)
 testSequences = np.array(map(lambda x: x.getText(), testSet))
 testX = testSequences[:,:-1]
-testLoc = padLocations(locations, testX)
 testY = np.roll(testSequences, -1)[:,:-1].reshape(len(testSet), sequence_length, 1)
 
 sequence_input = Input(shape=(sequence_length,), name='sequence_input')
 mask = Masking(mask_value=char_mapping['<pad>'])(sequence_input)
 embedding = Embedding(output_dim=embedding_size, input_dim=vocab_size)(mask)
 
-location_input = Input(shape=(sequence_length,), name='location_input')
-mask = Masking(mask_value=name_mapping['<pad>'])(location_input)
-loc_embedding = Embedding(output_dim=embedding_size, input_dim=loc_size)(mask)
+location_input = Input(shape=(sequence_length,2), name='location_input')
 
-merge = concatenate([embedding, loc_embedding])
+merge = concatenate([embedding, location_input])
 lstm = LSTM(lstm_size_1, return_sequences=True)(merge)
 lstm = LSTM(lstm_size_2, return_sequences=True)(lstm)
 predictions = TimeDistributed(Dense(vocab_size, activation='relu'))(lstm)
@@ -75,13 +62,17 @@ print model.summary()
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=[perplexity])
 
 # Train and evaluate performance
-def generator(x, loc, y):
+def generator(x, y, lat, lon):
     i = 0
     while True:
         i = (i + 1) % len(x)
-        yield ([np.array([x[i]]), np.array([loc[i]])], to_categorical(np.array([y[i]]), num_classes=vocab_size))
-model.fit_generator(generator(trainX, trainLoc, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs, verbose=2)
-result = model.evaluate_generator(generator(testX, testLoc, testY), steps=len(testSet))
+        resX = np.array([x[i]])
+        a = np.array([lat[i], lon[i]])
+        resLoc = np.array([np.stack([a for _ in range(sequence_length)])])
+        resY = to_categorical(np.array([y[i]]), num_classes=vocab_size)
+        yield ([resX, resLoc], resY)
+model.fit_generator(generator(trainX, trainY, trainLat, trainLon), steps_per_epoch=9, nb_epoch=1, verbose=1)
+result = model.evaluate_generator(generator(testX, testY, testLat, testLon), steps=1)
 
 print str(model.metrics_names[0]) + ": " + str(result[0])
 print str(model.metrics_names[1]) + ": " + str(result[1])
