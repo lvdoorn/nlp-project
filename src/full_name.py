@@ -8,6 +8,7 @@ sys.path.append("/home/xbt504/nlp-project/src")
 from keras.layers import Input, Dense, LSTM, concatenate, Embedding, TimeDistributed, Masking
 from keras.models import Model
 from keras.utils import to_categorical, plot_model
+from keras import optimizers
 from util import perplexity
 from loaddata import getCharMapping, getNameMapping, loadData
 
@@ -69,7 +70,7 @@ loc_embedding = Embedding(output_dim=embedding_size, input_dim=loc_size)(mask)
 merge = concatenate([embedding, loc_embedding])
 lstm = LSTM(lstm_size_1, return_sequences=True)(merge)
 lstm = LSTM(lstm_size_2, return_sequences=True)(lstm)
-predictions = TimeDistributed(Dense(vocab_size, activation='relu'))(lstm)
+predictions = TimeDistributed(Dense(vocab_size, activation='tanh'))(lstm)
 model = Model(inputs=[sequence_input, location_input], outputs=predictions)
 print model.summary()
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=[perplexity])
@@ -80,7 +81,8 @@ def generator(x, loc, y):
     while True:
         i = (i + 1) % len(x)
         yield ([np.array([x[i]]), np.array([loc[i]])], to_categorical(np.array([y[i]]), num_classes=vocab_size))
-model.fit_generator(generator(trainX, trainLoc, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs, verbose=2)
+steps = 750
+model.fit_generator(generator(trainX, trainLoc, trainY), steps_per_epoch=steps, nb_epoch=epochs, verbose=2)
 result = model.evaluate_generator(generator(testX, testLoc, testY), steps=len(testSet))
 
 print str(model.metrics_names[0]) + ": " + str(result[0])

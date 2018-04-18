@@ -56,7 +56,7 @@ location_input = Input(shape=(sequence_length,2), name='location_input')
 merge = concatenate([embedding, location_input])
 lstm = LSTM(lstm_size_1, return_sequences=True)(merge)
 lstm = LSTM(lstm_size_2, return_sequences=True)(lstm)
-predictions = TimeDistributed(Dense(vocab_size, activation='relu'))(lstm)
+predictions = TimeDistributed(Dense(vocab_size, activation='tanh'))(lstm)
 model = Model(inputs=[sequence_input, location_input], outputs=predictions)
 print model.summary()
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=[perplexity])
@@ -71,13 +71,14 @@ def generator(x, y, lat, lon):
         resLoc = np.array([np.stack([a for _ in range(sequence_length)])])
         resY = to_categorical(np.array([y[i]]), num_classes=vocab_size)
         yield ([resX, resLoc], resY)
-model.fit_generator(generator(trainX, trainY, trainLat, trainLon), steps_per_epoch=9, nb_epoch=1, verbose=1)
-result = model.evaluate_generator(generator(testX, testY, testLat, testLon), steps=1)
+steps = 750
+model.fit_generator(generator(trainX, trainY, trainLat, trainLon), steps_per_epoch=steps, nb_epoch=epochs, verbose=2)
+result = model.evaluate_generator(generator(testX, testY, testLat, testLon), steps=len(testSet))
 
 print str(model.metrics_names[0]) + ": " + str(result[0])
 print str(model.metrics_names[1]) + ": " + str(result[1])
 
 # Save model and mapping to file
 if (saveModel):
-    model.save('model_full_name.h5')
+    model.save('model_coords.h5')
 

@@ -1,6 +1,7 @@
 import random
 
 from pickle import load
+from util import decode
 from tweet import Tweet
 
 sequence_filename = 'sequences.txt'
@@ -12,9 +13,10 @@ def loadData():
     raw_data = open(sequence_filename, 'r').read().splitlines() 
     tweets = []
     for line in raw_data:
-        split = line.split(' ')
+        split = line.split(' ' )
         tweets.append(Tweet(map(int, split[0].split(',')), int(split[1]), float(split[2]), float(split[3])))
     testIndex = int(round(len(tweets) * (1 - test_set_ratio)))
+    random.seed(1)
     random.shuffle(tweets)
     trainSet = tweets[:testIndex]
     testSet = tweets[testIndex:]
