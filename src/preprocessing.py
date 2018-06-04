@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-#
-# Preprocessing code to create files with all necessary data
-# Output files are created in the output_dir directory
+
+""" Preprocessing code to create files with all necessary data
+    Output files are created in the output_dir directory
+"""
 
 import json
 import collections
@@ -39,8 +40,9 @@ file_da = '%s/tweets_collected_da.jsonl' % data_dir
 file_sv = '%s/tweets_collected_sv.jsonl' % data_dir
 file_no = '%s/tweets_collected_no.jsonl' % data_dir
 
-# Reads input files, removes duplicate lines and writes to a single file
 def removeDuplicates():
+    """ Reads input files, removes duplicate lines and writes to a single file
+    """
     da = open(file_da, 'r').read().splitlines()
     sv = open(file_sv, 'r').read().splitlines()
     no = open(file_no, 'r').read().splitlines()
@@ -71,8 +73,9 @@ def removeDuplicates():
     open(noDuplicatesFilename, 'w').write('\n'.join(tweets))
     print "Wrote %d tweets to file" % len(tweets)
     
-# Reads all tweets and splits them into a train and test set, which are written to file
 def createTrainTestSets():
+    """ Reads all tweets and splits them into a train and test set, which are written to file
+    """
     tweets = open(noDuplicatesFilename, 'r').read().splitlines()
     name_mapping = loadNameMapping()
     holdoutLocations = [u'Frederiksberg, Danmark', u'T\xe5rnby, Danmark', u'Kolding, Danmark', u'T\xe4by, Sverige', u'Kungsbacka, Sverige', u'Kristianstad, Sverige', u'Bod\xf8, Norge', u'Kvinnherad, Norge', u'Ullensaker, Norge']
@@ -96,26 +99,10 @@ def createTrainTestSets():
     print "Wrote %d tweets to normal test set" % len(testSet)
     print "Wrote %d tweets to location test set" % len(testSetLocation)
 
-def createTrainTestSetsLocation():
-    tweets = open(noDuplicatesFilename, 'r').read().splitlines()
-    name_mapping = loadNameMapping()
-    holdoutLocations = [u'Frederiksberg, Danmark', u'T\xe5rnby, Danmark', u'Kolding, Danmark', u'T\xe4by, Sverige', u'Kungsbacka, Sverige', u'Kristianstad, Sverige', u'Bod\xf8, Norge', u'Kvinnherad, Norge', u'Ullensaker, Norge']
-    tweets = loadTweets(noDuplicatesFilename)
-    holdout = []
-    rest = []
-    for tweet in tweets:
-        name = tweet.getFullName()
-        if name in holdoutLocations:
-            holdout.append(tweet)
-        else:
-            rest.append(tweet)
-    open(trainSetLocationFilename, 'w').write('\n'.join(trainSet))
-    open(testSetLocationFilename, 'w').write('\n'.join(testSet))
-    print "Wrote %d tweets to train set" % len(trainSet)
-    print "Wrote %d tweets to test set" % len(testSet)
-
-# Reads filename, and returns a list of Tweet objects
 def loadTweets(filename):
+    """ Load tweets from a filename.
+    Returns a list of Tweet objects.
+    """
     tweets = open(filename, 'r').read().splitlines()
     print "Loading %d tweets from %s ..." % (len(tweets), filename)
     tweetObjects = []
@@ -146,6 +133,10 @@ def stringToTweet(string):
     return Tweet(js['text'], place['full_name'], coords[0], coords[1], place['country'], js['created_at'])
 
 def getCharMapping(tweets):
+    """ Given a list of Tweets, returns a character mapping.
+    This mapping contains the max_chars most common characters.
+    Also writes the mapping to the file char_mapping_filename.
+    """
     text = map(lambda x: x.getText(), tweets)
     allChars = [c for s in text for c in s]
     x = collections.Counter(allChars)
@@ -157,6 +148,9 @@ def getCharMapping(tweets):
     return mapping
 
 def getNameMapping(tweets):
+    """ Given a list of Tweets, returns a name mapping.
+    Also writes the mapping to the file name_mapping_filename.
+    """
     allNames = []
     for tweet in tweets:
         allNames.append(tweet.getFullName())

@@ -22,13 +22,11 @@ if (len(sys.argv) < 2):
 
 # Parameters
 sequence_length = 150
-saveModel = True
 modelType = sys.argv[1]
 if (modelType < '1' or modelType > '3'):
     print "Not a valid model type"
     sys.exit(1)
 epochs = int(sys.argv[2])
-locationBasedTestSet = None
 modelTypes = {'1': "No location", '2': "Full name", '3': "Coordinates"}
 
 print "Running with this configuration:"
@@ -92,7 +90,9 @@ else:
     print "Not a valid model type"
     sys.exit(1)
 print model.summary()
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=[perplexity])
+
+adam = keras.optimizers.Adam(clipnorm=1, clipvalue=0.5)
+model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=[perplexity])
 
 def padLocations(locations, sequences):
     trainLoc = np.zeros(sequences.shape)
@@ -103,6 +103,20 @@ def padLocations(locations, sequences):
             else:
                 trainLoc[i, j] = locations[i]
     return trainLoc
+
+def padCoords(lat, lon, sequences):
+    trainLat = np.zeros(sequences.shape)
+    trainLon = np.zeros(sequences.shape)
+    for i, sequence in enumerate(sequences):
+        for j in range(len(sequence)):
+            if sequences[i, j] == char_mapping['<pad>']:
+                trainLat[i, j] = name_mapping['<pad>']
+                trainLon[i, j] = name_mapping['<pad>']
+            else:
+                trainLat[i, j] = lat[i]
+                trainLon[i, j] = lon[i]
+    return trainLat, trainLon
+
 locations = map(lambda x: name_mapping[x.getFullName()], trainSet)
 trainLoc = padLocations(locations, trainX)
 locations = map(lambda x : name_mapping[x.getFullName()], testSetNormal)
@@ -110,71 +124,59 @@ testLocNormal = padLocations(locations, testXN)
 locations = map(lambda x : name_mapping[x.getFullName()], testSetLocation)
 testLocLocation = padLocations(locations, testXL)
 
-def fullNameGenerator(x, y, loc):
-    i = 0
-    while True:
-        i = (i + 1) % len(x)
-        yield ([np.array([x[i]]), np.array([loc[i]])], to_categorical(np.array([y[i]]), num_classes=vocab_size))
-
-def coordsGenerator(x, y, lat, lon):
-    i = 0
-    while True:
-        i = (i + 1) % len(x)
-        resX = np.array([x[i]])
-        a = np.array([lat[i], lon[i]])
-        resLoc = np.array([np.stack([a for _ in range(sequence_length)])])
-        resY = to_categorical(np.array([y[i]]), num_classes=vocab_size)
-        yield ([resX, resLoc], resY)
-
-# Train and evaluate performance
-def generator(x, y):
-    i = 0
-    while True:
-        i = (i + 1) % len(x)
-        yield (np.array([x[i]]), to_categorical(np.array([y[i]]), num_classes=vocab_size))
+latitudes = map(lambda x: x.getLat(), trainSet)
+longitudes = map(lambda x: x.getLon(), trainSet)
+trainLat, trainLon = padCoords(latitudes, longitudes, trainX)
+latitudes = map(lambda x: x.getLat(), testSetNormal)
+longitudes = map(lambda x: x.getLon(), testSetNormal)
+testLatNormal, testLonNormal = padCoords(latitudes, longitudes, testXN)
+latitudes = map(lambda x: x.getLat(), testSetLocation)
+longitudes = map(lambda x: x.getLon(), testSetLocation)
+testLatLocation, testLonLocation = padCoords(latitudes, longitudes, testXL)
 
 if modelType == '1':
-    model.fit_generator(generator(trainX, trainY), steps_per_epoch=20, nb_epoch=epochs, verbose=2)
-    #model.fit_generator(generator(trainX, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs, verbose=2)
-    sys.exit(0)
-    result = model.evaluate_generator(generator(testXN, testYN), steps=len(testSequencesNormal))
+    print "Fitting model type 1"
+    model.fit(trainX, to_categorical(trainY, num_classes=vocab_size), epochs=epochs, verbose=2)
+    result = model.evaluate(testXN, to_categorical(testYN, num_classes=vocab_size), verbose=2)
     print "Evaluation on normal test set:"
     print str(model.metrics_names[0]) + ": " + str(result[0])
     print str(model.metrics_names[1]) + ": " + str(result[1])
 
-    result = model.evaluate_generator(generator(testXL, testYL), steps=len(testSequencesLocation))
+    result = model.evaluate(testXL, to_categorical(testYL, num_classes=vocab_size), verbose=2)
     print "Evaluation on location-based test set:"
     print str(model.metrics_names[0]) + ": " + str(result[0])
     print str(model.metrics_names[1]) + ": " + str(result[1])
 
 if modelType == '2':
-    print len(testXN)
-    print len(testYN)
-    model.fit_generator(fullNameGenerator(trainX, trainY, trainLoc), steps_per_epoch=20, nb_epoch=epochs, verbose=1)
-    #model.fit_generator(fullNameGenerator(trainX, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs, verbose=2)
-    result = model.evaluate_generator(fullNameGenerator(testXN, testYN, testLocNormal), steps=len(testSequencesNormal))
+    print "Fitting model type 2"
+    model.fit([trainX, trainLoc], to_categorical(trainY, num_classes=vocab_size), epochs=epochs, verbose=2)
+    result = model.evaluate([testXN, testLocNormal], to_categorical(testYN, num_classes=vocab_size), verbose=2)
     print "Evaluation on normal test set:"
     print str(model.metrics_names[0]) + ": " + str(result[0])
     print str(model.metrics_names[1]) + ": " + str(result[1])
 
-    result = model.evaluate_generator(fullNameGenerator(testXL, testYL, testLocLocation), steps=len(testSequencesLocation))
+    result = model.evaluate([testXL, testLocLocation], to_categorical(testYL, num_classes=vocab_size), verbose=2)
     print "Evaluation on location-based test set:"
     print str(model.metrics_names[0]) + ": " + str(result[0])
     print str(model.metrics_names[1]) + ": " + str(result[1])
 
 if modelType == '3':
-    model.fit_generator(coordsGenerator(trainX, trainY, map(lambda x: x.getLat(), trainSet), map(lambda x: x.getLon(), trainSet)), steps_per_epoch=20, nb_epoch=epochs, verbose=1)
-    #model.fit_generator(coordsGenerator(trainX, trainY), steps_per_epoch=len(trainSet), nb_epoch=epochs, verbose=2)
-    result = model.evaluate_generator(coordsGenerator(testXN, testYN, map(lambda x: x.getLat(), testSetNormal), map(lambda x: x.getLon(), testSetNormal)), steps=len(testSequencesNormal))
+    def getLocInput(lat, lon):
+        res = np.zeros((len(lat), sequence_length, 2))
+        for i in range(len(lat)):
+            for j in range(sequence_length):
+                cell = np.array([lat[i, j], lon[i, j]])
+            res[i, j] = cell
+        return res
+
+    print "Fitting model type 3"
+    model.fit([trainX, getLocInput(trainLat, trainLon)], to_categorical(trainY, num_classes=vocab_size), epochs=epochs, verbose=2)
+    result = model.evaluate([testXN, getLocInput(testLatNormal, testLonNormal)], to_categorical(testYN, num_classes=vocab_size), verbose=2)
     print "Evaluation on normal test set:"
     print str(model.metrics_names[0]) + ": " + str(result[0])
     print str(model.metrics_names[1]) + ": " + str(result[1])
 
-    result = model.evaluate_generator(coordsGenerator(testXL, testYL, map(lambda x: x.getLat(), testSetLocation), map(lambda x: x.getLon(), testSetLocation)), steps=len(testSequencesLocation))
+    result = model.evaluate([testXL, getLocInput(testLatLocation, testLonLocation)], to_categorical(testYL, num_classes=vocab_size), verbose=2)
     print "Evaluation on location-based test set:"
     print str(model.metrics_names[0]) + ": " + str(result[0])
     print str(model.metrics_names[1]) + ": " + str(result[1])
-
-# Save model and mapping to file
-if (saveModel):
-    model.save('../out/model_no_location.h5')

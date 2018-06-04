@@ -1,5 +1,6 @@
 class Tweet:
     """A class to hold tweet data"""
+
     def __init__(self, text, full_name, lat, lon, country=None, created_at=None):
         self.textAttr = text
         self.full_nameAttr = full_name
@@ -25,4 +26,3 @@ class Tweet:
 
     def getCreatedAt(self):
         return self.created_atAttr
- 
